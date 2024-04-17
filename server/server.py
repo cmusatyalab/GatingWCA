@@ -29,9 +29,6 @@ import mpncov
 import wca_pb2
 import wca_state_machine_pb2
 
-import measure_object_size as ms
-import hand_gestures as hg
-
 SOURCE = 'wca_client'
 INPUT_QUEUE_MAXSIZE = 60
 PORT = 9099
@@ -475,79 +472,33 @@ class InferenceEngine(cognitive_engine.Engine):
             (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
                                           ymin * im_height, ymax * im_height)
 
-            # ########################### length measurement
-            if detector_class_name == 'bolt':
-                (xmin, ymin, xmax, ymax) = (xmin * im_width, ymin * im_height,
-                                            xmax * im_width, ymax * im_height)
-                img, re1, size_ob = ms.size_measuring(xmin, ymin, xmax, ymax, img)
-                user_ready_after_error = wca_pb2.ToClientExtras.UserReady.DISABLE
+            cropped_pil = pil_img.crop((left, top, right, bottom))
+            transformed = self._transform(cropped_pil).cuda()
+            output = classifier.model(transformed[None, ...])
+            prob = torch.nn.functional.softmax(output, dim=1)
+            # print('Classifier probability:', prob.data.cpu().numpy())
 
-                if re1 == -2:
-                    # Possibly a false positive detection - detecting the aruco marker as the bolt
-                    self.count_ = 0
-                    self.error_count = 0
-                    continue
-                elif re1 == -1:
-                    print('The marker is not fully shown...')
-                    label_name = None
-                    self.error_count = 0
-                    self.count_ += 1
-                    # Increasing patience for reporting aruco error
-                    if self.count_ >= self.aruco_patience:
-                        self.count_ = 0
-                        self._thumbs_up_found = False
+            value, pred = prob.topk(1, 1, True, True)
+            if value.item() < CLASSIFIER_THRESHOLD:
+                continue
+            class_ind = pred.item()
+            label_name = classifier.labels[class_ind]
 
-                        return self._result_wrapper_for(step,
-                                                        audio=aruco_error_audio,
-                                                        user_ready=user_ready_after_error)
-                else:
-                    # from cm to mm
-                    size_ob = round(size_ob * 10, 0)
-                    print('Object length:', size_ob, 'mm')
-
-                    self.count_ = 0
-                    if size_ob in range(12 - 2, 12 + 14):
-                        label_name = 'bolt12'
-                        self.error_count = 0
-                    else:
-                        label_name = None
-                        self.error_count += 1
-                        # Increasing patience for reporting wrong length error
-                        if self.error_count >= self.error_patience:
-                            self.error_count = 0
-                            self._thumbs_up_found = False
-                            return self._result_wrapper_for(step,
-                                                            audio=length_error_audio,
-                                                            user_ready=user_ready_after_error)
-            # ###########################
-
-            else:
-                cropped_pil = pil_img.crop((left, top, right, bottom))
-                transformed = self._transform(cropped_pil).cuda()
-                output = classifier.model(transformed[None, ...])
-                prob = torch.nn.functional.softmax(output, dim=1)
-                # print('Classifier probability:', prob.data.cpu().numpy())
-
-                value, pred = prob.topk(1, 1, True, True)
-                if value.item() < CLASSIFIER_THRESHOLD:
-                    continue
-                class_ind = pred.item()
-                label_name = classifier.labels[class_ind]
-
-                # Cache the cropped frame
-                if len(self._frames_cached) >= MAX_FRAMES_CACHED:
-                    frame_to_evict = self._frames_cached.pop(0)
-                    try:
-                        os.remove(frame_to_evict)
-                    except OSError as oe:
-                        logger.warning(oe)
-                classified_class = label_name
-                cached_filename = os.path.join(DEFAULT_CACHE_DIR,
-                                               cur_time + "cropped-" + classified_class + '.jpg')
-                self._frames_cached.append(cached_filename)
-                cropped_pil.save(cached_filename)
+            # Cache the cropped frame
+            if len(self._frames_cached) >= MAX_FRAMES_CACHED:
+                frame_to_evict = self._frames_cached.pop(0)
+                try:
+                    os.remove(frame_to_evict)
+                except OSError as oe:
+                    logger.warning(oe)
+            classified_class = label_name
+            cached_filename = os.path.join(DEFAULT_CACHE_DIR,
+                                           cur_time + "cropped-" + classified_class + '.jpg')
+            self._frames_cached.append(cached_filename)
+            cropped_pil.save(cached_filename)
 
             logger.info('Found label: %s', label_name)
+            print('Classifier probability:', value.item())
             # logger.info('return transition: %s', str(state.has_class_transitions.keys()))
             # logger.info('current state name on server is: %s', step)
 
