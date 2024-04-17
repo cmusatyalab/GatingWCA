@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package wca;
+
+option java_package = "edu.cmu.cs.wca";
+option java_outer_classname = "Protos";
+
+message ToServerExtras {
+    string step = 1;
+    enum ClientCmd {
+        NO_CMD = 0;
+        ZOOM_START = 1;
+        ZOOM_STOP = 2;
+        REPORT = 3;
+    }
+    ClientCmd client_cmd = 2;
+}
+
+message ToClientExtras {
+    string step = 1;
+    ZoomInfo zoom_info = 2;
+    enum ZoomResult {
+        NO_CALL = 0;
+        CALL_START = 1;
+        EXPERT_BUSY = 2;
+    }
+    ZoomResult zoom_result = 3;
+    enum UserReady {
+        NO_CHANGE = 0;
+        SET = 1;
+        CLEAR = 2;
+        DISABLE = 3;
+    }
+    UserReady user_ready = 4;
+}
+
+message ZoomInfo {
+    string app_key = 1;
+    string app_secret = 2;
+    string meeting_number = 3;
+    string meeting_password = 4;
+}

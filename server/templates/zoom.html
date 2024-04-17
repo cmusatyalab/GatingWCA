@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- import #zmmtg-root css -->
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.1.1/css/bootstrap.css" />
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.1.1/css/react-select.css" />
+    <script>
+      const signature = "{{ signature }}";
+      const apiKey = "{{ api_key }}";
+      const meetingNumber = "{{ meeting_number }}";
+      const userName = "{{ user_name }}";
+      const passWord = "{{ password }}";
+    </script>
+<head>
+<body>
+    <!-- import ZoomMtg dependencies -->
+    <script src="https://source.zoom.us/2.1.1/lib/vendor/react.min.js"></script>
+    <script src="https://source.zoom.us/2.1.1/lib/vendor/react-dom.min.js"></script>
+    <script src="https://source.zoom.us/2.1.1/lib/vendor/redux.min.js"></script>
+    <script src="https://source.zoom.us/2.1.1/lib/vendor/redux-thunk.min.js"></script>
+    <script src="https://source.zoom.us/1.7.9/lib/vendor/jquery.min.js"></script>
+    <script src="https://source.zoom.us/2.1.1/lib/vendor/lodash.min.js"></script>
+
+    <!-- import ZoomMtg -->
+    <script src="https://source.zoom.us/zoom-meeting-2.1.1.min.js"></script>
+
+    <!-- import local .js file -->
+    <script src="static/zoom.js"></script>
+</body>
+</html>

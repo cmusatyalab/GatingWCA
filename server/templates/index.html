@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Expert Dashboard</title>
+  {% if not duplicate_connection %}
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" type="text/javascript"></script>
+    <script src="/static/index.js"></script>
+  {% endif %}
+  <link href="/static/style.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+  {% if duplicate_connection %}
+    <h1 class="error">Error! There is another expert connected.</h1>
+  {% else %}
+    <iframe src="/zoom" title="chat" width="800" height="600"></iframe>
+    <p id="nothelping">The users do not need help.</p>
+    <div id="states">
+      {% for step_name in step_names %}
+      <img src="/images/{{ step_name }}.jpg" alt="{{ step_name }}" id="{{ step_name }}" class="state">
+      {% endfor %}
+    </div>
+  {% endif %}
+</body>
+</html>
