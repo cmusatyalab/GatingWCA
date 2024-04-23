@@ -35,8 +35,7 @@ message ToClientExtras {
 }
 
 message ZoomInfo {
-    string app_key = 1;
-    string app_secret = 2;
-    string meeting_number = 3;
-    string meeting_password = 4;
+    string jwt_token = 1;
+    string meeting_number = 2;
+    string meeting_password = 3;
 }

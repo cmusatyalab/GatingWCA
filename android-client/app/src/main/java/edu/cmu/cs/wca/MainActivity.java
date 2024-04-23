@@ -68,18 +68,13 @@ public class MainActivity extends AppCompatActivity {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
 
-//    public static final String EXTRA_APP_KEY = "edu.cmu.cs.owf.APP_KEY";
-//    public static final String EXTRA_APP_SECRET = "edu.cmu.cs.owf.APP_SECRET";
-//    public static final String EXTRA_MEETING_NUMBER = "edu.cmu.cs.owf.MEETING_NUMBER";
-//    public static final String EXTRA_MEETING_PASSWORD = "edu.cmu.cs.owf.MEETING_PASSWORD";
+    public static final String EXTRA_JWT_TOKEN = "edu.cmu.cs.wca.JWT_TOKEN";
+    public static final String EXTRA_MEETING_NUMBER = "edu.cmu.cs.wca.MEETING_NUMBER";
+    public static final String EXTRA_MEETING_PASSWORD = "edu.cmu.cs.wca.MEETING_PASSWORD";
 
-    private static final int REQUEST_CODE = 999;
-    private static final String CALL_EXPERT = "CALL EXPERT";
-    private static final String REPORT = "REPORT";
     private static final String WCA_FSM_START = "WCA_FSM_START";
     private static final String WCA_FSM_END = "WCA_FSM_END";
     private ToServerExtras.ClientCmd reqCommand = ToServerExtras.ClientCmd.NO_CMD;
-    private ToServerExtras.ClientCmd prepCommand = ToServerExtras.ClientCmd.NO_CMD;
     private boolean logCompleted = false;
     private String step = WCA_FSM_START;
     private ServerComm serverComm;
@@ -105,6 +100,8 @@ public class MainActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             new ActivityResultCallback<ActivityResult>() {
+                // TODO: Fix bug: When a client join the Zoom multiple times, it only sees the web-user-set steps
+                //       returned from the expert at the first time
                 @Override
                 public void onActivityResult(ActivityResult result) {
                     ToServerExtras toServerExtras = ToServerExtras.newBuilder()
@@ -125,13 +122,12 @@ public class MainActivity extends AppCompatActivity {
             if (toClientExtras.getZoomResult() == ToClientExtras.ZoomResult.CALL_START) {
                 ZoomInfo zoomInfo = toClientExtras.getZoomInfo();
 
-//                Intent intent = new Intent(this, ZoomActivity.class);
-//                intent.putExtra(EXTRA_APP_KEY, zoomInfo.getAppKey());
-//                intent.putExtra(EXTRA_APP_SECRET, zoomInfo.getAppSecret());
-//                intent.putExtra(EXTRA_MEETING_NUMBER, zoomInfo.getMeetingNumber());
-//                intent.putExtra(EXTRA_MEETING_PASSWORD, zoomInfo.getMeetingPassword());
-//
-//                activityResultLauncher.launch(intent);
+                Intent intent = new Intent(this, ZoomActivity.class);
+                intent.putExtra(EXTRA_JWT_TOKEN, zoomInfo.getJwtToken());
+                intent.putExtra(EXTRA_MEETING_NUMBER, zoomInfo.getMeetingNumber());
+                intent.putExtra(EXTRA_MEETING_PASSWORD, zoomInfo.getMeetingPassword());
+
+                activityResultLauncher.launch(intent);
                 return;
             } else if (toClientExtras.getZoomResult() == ToClientExtras.ZoomResult.EXPERT_BUSY) {
                 runOnUiThread(() -> {
@@ -143,7 +139,6 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
 
-            // TODO: Make member variables atomic if using more than 1 Gabriel Tokens
             if (step.equals(WCA_FSM_START)) {
                 logList.add(TAG + ": Start: " + SystemClock.uptimeMillis() + "\n");
                 inputFrameCount = 1;
@@ -165,12 +160,6 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (InvalidProtocolBufferException e) {
             Log.e(TAG, "Protobuf parse error", e);
-        }
-
-        // Prepare the command parsed from ASR to be sent to the server with the next frame
-        if (reqCommand != ToServerExtras.ClientCmd.NO_CMD) {
-            prepCommand = reqCommand;
-            reqCommand = ToServerExtras.ClientCmd.NO_CMD;
         }
 
         if (resultWrapper.getResultsCount() == 0) {
@@ -298,6 +287,7 @@ public class MainActivity extends AppCompatActivity {
         };
         this.textToSpeech = new TextToSpeech(getApplicationContext(), onInitListener);
 
+        // TODO: Ask for microphone permission inside the app (before asking camera permission)
         yuvToJPEGConverter = new YuvToJPEGConverter(this, 100);
         cameraCapture = new CameraCapture(this, analyzer, WIDTH, HEIGHT, viewFinder, CameraSelector.DEFAULT_BACK_CAMERA, false);
 
@@ -342,16 +332,17 @@ public class MainActivity extends AppCompatActivity {
     final private ImageAnalysis.Analyzer analyzer = new ImageAnalysis.Analyzer() {
         @Override
         public void analyze(@NonNull ImageProxy image) {
-            boolean toWait = (prepCommand != ToServerExtras.ClientCmd.NO_CMD);
+            // Ensure the packet is sent to the server if there is a client command
+            boolean toWait = (reqCommand != ToServerExtras.ClientCmd.NO_CMD);
             if (step.equals(WCA_FSM_END) && !toWait) {
                 image.close();
                 return;
             }
             inputFrameCount++;
 
-            if (readyForServer) {
-                ToServerExtras.ClientCmd clientCmd = prepCommand;
-                prepCommand = ToServerExtras.ClientCmd.NO_CMD;
+            if (readyForServer || toWait) {
+                ToServerExtras.ClientCmd clientCmd = reqCommand;
+                reqCommand = ToServerExtras.ClientCmd.NO_CMD;
                 serverComm.sendSupplier(() -> {
                     ByteString jpegByteString = yuvToJPEGConverter.convert(image);
 
@@ -383,5 +374,12 @@ public class MainActivity extends AppCompatActivity {
         cameraCapture.shutdown();
         // TODO: Disconnect from the server elegantly?
         // TODO: Clean up the Zoom session?
+    }
+
+    public void startZoom(View view) {
+        this.textToSpeech.speak("Calling expert now.",
+                TextToSpeech.QUEUE_FLUSH, null, null);
+        // Delay sending the client command until the next frame
+        this.reqCommand = ToServerExtras.ClientCmd.ZOOM_START;
     }
 }
