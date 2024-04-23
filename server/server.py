@@ -23,7 +23,7 @@ from gabriel_server import cognitive_engine
 from gabriel_server import local_engine
 from gabriel_protocol import gabriel_pb2
 
-# import credentials
+import credentials
 import http_server
 import mpncov
 import wca_pb2
@@ -216,14 +216,9 @@ class _StatesForExpertCall:
 class InferenceEngine(cognitive_engine.Engine):
 
     def __init__(self, fsm_file_path):
+        # ############################################
+        # TODO: Add to the protobuf message to make the server stateless
         self._frame_tx_count = 0
-        # ############################################ Temp fix
-        # TODO: Add them in the protobuf message to make the server stateless
-        self.count_ = 0
-        self.error_count = 0
-        self.aruco_patience = 3
-        self.error_patience = 2
-        self._thumbs_up_found = False
         # ############################################
         physical_devices = tf.config.list_physical_devices('GPU')
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -327,13 +322,13 @@ class InferenceEngine(cognitive_engine.Engine):
         to_client_extras.zoom_result = wca_pb2.ToClientExtras.ZoomResult.CALL_START
         to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.NO_CHANGE
 
-        # zoom_info = wca_pb2.ZoomInfo()
-        # zoom_info.app_key = credentials.ANDROID_KEY
-        # zoom_info.app_secret = credentials.ANDROID_SECRET
-        # zoom_info.meeting_number = credentials.MEETING_NUMBER
-        # zoom_info.meeting_password = credentials.MEETING_PASSWORD
-        #
-        # to_client_extras.zoom_info.CopyFrom(zoom_info)
+        zoom_info = wca_pb2.ZoomInfo()
+        zoom_info.app_key = credentials.ANDROID_KEY
+        zoom_info.app_secret = credentials.ANDROID_SECRET
+        zoom_info.meeting_number = credentials.MEETING_NUMBER
+        zoom_info.meeting_password = credentials.MEETING_PASSWORD
+
+        to_client_extras.zoom_info.CopyFrom(zoom_info)
 
         result_wrapper.extras.Pack(to_client_extras)
         return result_wrapper
@@ -347,10 +342,7 @@ class InferenceEngine(cognitive_engine.Engine):
             'step': step
         }
         self._engine_conn.send(msg)
-        logger.info('Zoom Started')
-        # ###############################################
-        self._thumbs_up_found = False
-        # ###############################################
+        logger.info('Sending Zoom info to client.')
         return self._start_zoom()
 
     def handle(self, input_frame):
@@ -368,9 +360,6 @@ class InferenceEngine(cognitive_engine.Engine):
             new_step = pipe_output.get('step')
             logger.info('Zoom Stopped. New step: %s', new_step)
             transition = self._states_for_expert_call.get_transition(new_step)
-            # ###############################################
-            self._thumbs_up_found = False
-            # ###############################################
             return self._result_wrapper_for_transition(transition)
 
         step = to_server_extras.step
@@ -397,9 +386,6 @@ class InferenceEngine(cognitive_engine.Engine):
             os.makedirs(DEFAULT_CACHE_DIR, exist_ok=True)
 
         if state.always_transition is not None:
-            # ###############################################
-            self._thumbs_up_found = False
-            # ###############################################
             return self._result_wrapper_for_transition(state.always_transition)
 
         assert len(state.processors) == 1, 'wrong number of processors'
@@ -414,9 +400,6 @@ class InferenceEngine(cognitive_engine.Engine):
         np_data = np.frombuffer(input_frame.payloads[0], dtype=np.uint8)
         img_bgr = cv2.imdecode(np_data, cv2.IMREAD_COLOR)
         img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-        # ############################################### Detecting hand gestures
-        # ###############################################
 
         # Insert a new axis to make an input tensor of shape (1, h, w, channel)
         # For Google Glass, the input shape is (1, 1080, 1920, 3)
@@ -505,15 +488,10 @@ class InferenceEngine(cognitive_engine.Engine):
             if label_name is not None:
                 transition = state.has_class_transitions.get(label_name)
                 if transition is not None:
-                    # ###############################################
-                    self._thumbs_up_found = False
-                    # ###############################################
                     return self._result_wrapper_for_transition(transition)
             return self._result_wrapper_for(step)
 
-        # Good boxes do not contain any valid steps
-        self.count_ = 0
-        self.error_count = 0
+        # Good boxes found but not classified as any valid steps
         return self._result_wrapper_for(step)
 
 

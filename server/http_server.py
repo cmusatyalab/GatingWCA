@@ -1,11 +1,7 @@
 import asyncio
-import base64
-# import credentials
-import hashlib
-import hmac
+import credentials
 import logging
 import os
-import time
 import ssl
 import aiohttp
 from aiohttp import web
@@ -16,6 +12,7 @@ import jinja2
 ROLE = '1'
 USER_NAME = 'Human Expert'
 IMAGES_DIR = 'images'
+TOKEN_VALID_HRS = 24
 
 
 KEYS = 'keys'
@@ -28,31 +25,16 @@ logger = logging.getLogger(__name__)
 
 @aiohttp_jinja2.template('zoom.html')
 async def zoom(request):
-    # meeting_number = credentials.MEETING_NUMBER
-    # key = credentials.WEB_KEY
-    # secret = credentials.WEB_SECRET
-    # signature = get_signature(meeting_number, key, ROLE, secret)
     return {
-        # 'meeting_number': meeting_number,
-        # 'api_key': key,
-        # 'signature': signature,
-        # 'password': credentials.MEETING_PASSWORD,
-        # 'user_name': USER_NAME
+        'meeting_number': credentials.MEETING_NUMBER,
+        'user_name': USER_NAME,
+        'user_email': credentials.USER_EMAIL,
+        'role': ROLE,
+        'password': credentials.MEETING_PASSWORD,
+        'client_id': credentials.CLIENT_ID,
+        'client_secret': credentials.CLIENT_SECRET,
+        'token_valid_hrs': TOKEN_VALID_HRS
     }
-
-
-def get_signature(meeting_number, key, role, secret):
-    ts = str(int(round(time.time() * 1000)) - 30000)
-    message = key + meeting_number + ts + role
-    message = base64.b64encode(bytes(message, 'utf-8'))
-    secret = bytes(secret, 'utf-8')
-    hash = hmac.new(secret, message, hashlib.sha256)
-    hash = base64.b64encode(hash.digest())
-    hash = hash.decode('utf-8')
-    raw_signature = '{}.{}.{}.{}.{}'.format(key, meeting_number, ts, role, hash)
-    signature = base64.b64encode(bytes(raw_signature, 'utf-8'))
-    signature = signature.decode('utf-8')
-    return signature.rstrip('=')
 
 
 async def favicon(request):
@@ -132,8 +114,6 @@ def start_http_server(conn, step_names):
     ])
 
     context = ssl.SSLContext()
-    # print("IN HTTP SERVER >>>>>>>")
-    # print(os.listdir("keys"))
     context.load_cert_chain(CERTFILE, KEYFILE)
     logger.info("Starting HTTP Server")
     web.run_app(app, ssl_context=context)
