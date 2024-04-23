@@ -35,7 +35,7 @@ Fine-grained image classification is performed using
 
 ## Setting up Zoom
 
-TO BE UPDATED
+### TODO: UPDATE THIS
 
 Create a file called `credentials.py` in the `server` directory of this
 repository. Format it as follows, with the proper values. For example,
@@ -65,6 +65,9 @@ sudo chown $USER /path/to/this/repository/server/keys/fullchain.pem
 3. Install the Docker container for TensorFlow object detection by following
    [these](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2.md#docker-installation)
    instructions.
+
+### TODO: Include a script to clone the tf-od repo, copy `Dockerfile` and `requirements.txt` into the directory, and use docker-compose to build the image and run the container
+ 
 4. Run `pip install gabriel-server` from inside the container.
 5. Commit the container.
 4. Run the container with the command `docker run --gpus all --rm -it -v /path/to/this/repository:/TwoStageOWF -p 9099:9099 -p 8443:8443 YOUR_TAG`
@@ -74,7 +77,7 @@ sudo chown $USER /path/to/this/repository/server/keys/fullchain.pem
 5. Run `cd /path/to/this/repository/server` and then
    `python3 server.py /path/to/your/app.pbfsm`
 6. Load the interface for the human expert in a browser by navigating to
-   https://YOUR_HOSTNAME:8443/. Note that the page will not load if you do not
+   https://YOUR\_HOSTNAME:8443/. Note that the page will not load if you do not
    include https at the start of the url.
 
 ## Client
@@ -86,6 +89,6 @@ sudo chown $USER /path/to/this/repository/server/keys/fullchain.pem
 ## Protobuf
 
 `server/wca_state_machine_pb2.py` was copied from
- https://github.com/cmusatyalab/OpenWorkflow/blob/master/gabrieltool/statemachine/wca_state_machine_pb2.py
+ https://github.com/cmusatyalab/OpenWorkflow/blob/master/gabrieltool/statemachine/wca\_state\_machine\_pb2.py
 
- `server/owf_pb2.py` gets generated when the Android client is run.
+ `server/wca_pb2.py` gets generated when the Android client is run.

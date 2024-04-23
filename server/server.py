@@ -323,8 +323,8 @@ class InferenceEngine(cognitive_engine.Engine):
         to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.NO_CHANGE
 
         zoom_info = wca_pb2.ZoomInfo()
-        zoom_info.app_key = credentials.ANDROID_KEY
-        zoom_info.app_secret = credentials.ANDROID_SECRET
+        zoom_info.jwt_token = http_server.gen_jwt_token(credentials.CLIENT_ID, credentials.CLIENT_SECRET,
+                                                        credentials.MEETING_NUMBER, http_server.ROLE_PARTICIPANT)
         zoom_info.meeting_number = credentials.MEETING_NUMBER
         zoom_info.meeting_password = credentials.MEETING_PASSWORD
 
@@ -355,6 +355,8 @@ class InferenceEngine(cognitive_engine.Engine):
             msg = {
                 'zoom_action': 'stop'
             }
+            # TODO: Fix bug: When a client join the Zoom multiple times, it only sees the web-user-set steps
+            #       returned from the expert at the first time
             self._engine_conn.send(msg)
             pipe_output = self._engine_conn.recv()
             new_step = pipe_output.get('step')

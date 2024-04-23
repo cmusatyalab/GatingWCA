@@ -1,44 +1,62 @@
 import asyncio
-import credentials
 import logging
 import os
 import ssl
+import time
+
 import aiohttp
 from aiohttp import web
 import aiohttp_jinja2
 import jinja2
+import jwt
 
+import credentials
 
-ROLE = '1'
+ROLE_HOST = 1
+ROLE_PARTICIPANT = 0
 USER_NAME = 'Human Expert'
 IMAGES_DIR = 'images'
 TOKEN_VALID_HRS = 24
 
-
 KEYS = 'keys'
 CERTFILE = os.path.join(KEYS, 'fullchain.pem')
 KEYFILE = os.path.join(KEYS, 'privkey.pem')
-
 
 logger = logging.getLogger(__name__)
 
 
 @aiohttp_jinja2.template('zoom.html')
 async def zoom(request):
+    jwt_token = gen_jwt_token(credentials.CLIENT_ID, credentials.CLIENT_SECRET,
+                              credentials.MEETING_NUMBER, ROLE_HOST)
     return {
         'meeting_number': credentials.MEETING_NUMBER,
         'user_name': USER_NAME,
         'user_email': credentials.USER_EMAIL,
-        'role': ROLE,
         'password': credentials.MEETING_PASSWORD,
         'client_id': credentials.CLIENT_ID,
-        'client_secret': credentials.CLIENT_SECRET,
-        'token_valid_hrs': TOKEN_VALID_HRS
+        'jwt_token': jwt_token
     }
 
 
 async def favicon(request):
     return web.FileResponse('favicon.ico')
+
+
+def gen_jwt_token(key, secret, meeting_number, role):
+    iat = int(round(time.time())) - 30
+    exp = iat + 3600 * TOKEN_VALID_HRS
+    header = {'alg': 'HS256', 'typ': 'JWT'}
+    payload = {
+        'sdkKey': key,
+        'appKey': key,
+        'mn': meeting_number,
+        'role': role,
+        'iat': iat,
+        'exp': exp,
+        'tokenExp': exp
+    }
+    return jwt.encode(payload, secret, algorithm="HS256", headers=header)
 
 
 class _ServerState:
@@ -83,6 +101,7 @@ class _ServerState:
             logger.info('websocket connection closed')
 
             return ws
+
         return websocket_handler
 
     def get_user_connected(self):

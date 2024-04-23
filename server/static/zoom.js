@@ -3,35 +3,16 @@ window.addEventListener("DOMContentLoaded", function (event) {
   websdkready();
 });
 
-function generateSignature(key, secret, mn, role) {
-  const iat = Math.round(new Date().getTime() / 1000) - 30
-  const exp = iat + 60 * 60 * tokenValidHrs
-  const oHeader = { alg: 'HS256', typ: 'JWT' }
-  const oPayload = {
-    sdkKey: key,
-    appKey: key,
-    mn: mn,
-    role: role,
-    iat: iat,
-    exp: exp,
-    tokenExp: exp
-  }
-  const sHeader = JSON.stringify(oHeader)
-  const sPayload = JSON.stringify(oPayload)
-  return KJUR.jws.JWS.sign('HS256', sHeader, sPayload, secret)
-}
-
 function websdkready() {
   var meetingConfig = {
-    sdkKey: clientID,
     meetingNumber: meetingNumber,
     userName: userName,
-    passWord: passWord,
-    // Reload the Zoom page if the user leaves meeting
-    leaveUrl: "/zoom",
-    role: role,
     userEmail: userEmail,
-    signature: generateSignature(clientID, clientSecret, meetingNumber, role)
+    passWord: passWord,
+    sdkKey: clientID,
+    signature: jwtToken,
+    // Reload the Zoom page if the user leaves meeting
+    leaveUrl: "/zoom"
   };
   console.log(JSON.stringify(ZoomMtg.checkSystemRequirements()));
   ZoomMtg.preLoadWasm();

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='wca',
   syntax='proto3',
   serialized_options=_b('\n\016edu.cmu.cs.wcaB\006Protos'),
-  serialized_pb=_b('\n\twca.proto\x12\x03wca\"\x95\x01\n\x0eToServerExtras\x12\x0c\n\x04step\x18\x01 \x01(\t\x12\x31\n\nclient_cmd\x18\x02 \x01(\x0e\x32\x1d.wca.ToServerExtras.ClientCmd\"B\n\tClientCmd\x12\n\n\x06NO_CMD\x10\x00\x12\x0e\n\nZOOM_START\x10\x01\x12\r\n\tZOOM_STOP\x10\x02\x12\n\n\x06REPORT\x10\x03\"\xa1\x02\n\x0eToClientExtras\x12\x0c\n\x04step\x18\x01 \x01(\t\x12 \n\tzoom_info\x18\x02 \x01(\x0b\x32\r.wca.ZoomInfo\x12\x33\n\x0bzoom_result\x18\x03 \x01(\x0e\x32\x1e.wca.ToClientExtras.ZoomResult\x12\x31\n\nuser_ready\x18\x04 \x01(\x0e\x32\x1d.wca.ToClientExtras.UserReady\":\n\nZoomResult\x12\x0b\n\x07NO_CALL\x10\x00\x12\x0e\n\nCALL_START\x10\x01\x12\x0f\n\x0b\x45XPERT_BUSY\x10\x02\";\n\tUserReady\x12\r\n\tNO_CHANGE\x10\x00\x12\x07\n\x03SET\x10\x01\x12\t\n\x05\x43LEAR\x10\x02\x12\x0b\n\x07\x44ISABLE\x10\x03\"a\n\x08ZoomInfo\x12\x0f\n\x07\x61pp_key\x18\x01 \x01(\t\x12\x12\n\napp_secret\x18\x02 \x01(\t\x12\x16\n\x0emeeting_number\x18\x03 \x01(\t\x12\x18\n\x10meeting_password\x18\x04 \x01(\tB\x18\n\x0e\x65\x64u.cmu.cs.wcaB\x06Protosb\x06proto3')
+  serialized_pb=_b('\n\twca.proto\x12\x03wca\"\x95\x01\n\x0eToServerExtras\x12\x0c\n\x04step\x18\x01 \x01(\t\x12\x31\n\nclient_cmd\x18\x02 \x01(\x0e\x32\x1d.wca.ToServerExtras.ClientCmd\"B\n\tClientCmd\x12\n\n\x06NO_CMD\x10\x00\x12\x0e\n\nZOOM_START\x10\x01\x12\r\n\tZOOM_STOP\x10\x02\x12\n\n\x06REPORT\x10\x03\"\xa1\x02\n\x0eToClientExtras\x12\x0c\n\x04step\x18\x01 \x01(\t\x12 \n\tzoom_info\x18\x02 \x01(\x0b\x32\r.wca.ZoomInfo\x12\x33\n\x0bzoom_result\x18\x03 \x01(\x0e\x32\x1e.wca.ToClientExtras.ZoomResult\x12\x31\n\nuser_ready\x18\x04 \x01(\x0e\x32\x1d.wca.ToClientExtras.UserReady\":\n\nZoomResult\x12\x0b\n\x07NO_CALL\x10\x00\x12\x0e\n\nCALL_START\x10\x01\x12\x0f\n\x0b\x45XPERT_BUSY\x10\x02\";\n\tUserReady\x12\r\n\tNO_CHANGE\x10\x00\x12\x07\n\x03SET\x10\x01\x12\t\n\x05\x43LEAR\x10\x02\x12\x0b\n\x07\x44ISABLE\x10\x03\"O\n\x08ZoomInfo\x12\x11\n\tjwt_token\x18\x01 \x01(\t\x12\x16\n\x0emeeting_number\x18\x02 \x01(\t\x12\x18\n\x10meeting_password\x18\x03 \x01(\tB\x18\n\x0e\x65\x64u.cmu.cs.wcaB\x06Protosb\x06proto3')
 )
 
 
@@ -213,29 +213,22 @@ _ZOOMINFO = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='app_key', full_name='wca.ZoomInfo.app_key', index=0,
+      name='jwt_token', full_name='wca.ZoomInfo.jwt_token', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='app_secret', full_name='wca.ZoomInfo.app_secret', index=1,
+      name='meeting_number', full_name='wca.ZoomInfo.meeting_number', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='meeting_number', full_name='wca.ZoomInfo.meeting_number', index=2,
+      name='meeting_password', full_name='wca.ZoomInfo.meeting_password', index=2,
       number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='meeting_password', full_name='wca.ZoomInfo.meeting_password', index=3,
-      number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -253,7 +246,7 @@ _ZOOMINFO = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=462,
-  serialized_end=559,
+  serialized_end=541,
 )
 
 _TOSERVEREXTRAS.fields_by_name['client_cmd'].enum_type = _TOSERVEREXTRAS_CLIENTCMD
