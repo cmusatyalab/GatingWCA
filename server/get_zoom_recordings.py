@@ -13,10 +13,13 @@ list_recordings_api = "/users/" + credentials.USER_EMAIL + "/recordings"
 list_recordings_url = API_SERVER + list_recordings_api
 today = date.today().strftime("%Y-%m-%d")
 last_month = date.today() - timedelta(days=30)
-payload = {'access_token': credentials.JWT_TOKEN, 'from': last_month, 'to': today}
 
 
 if __name__ == "__main__":
+    # TODO: Currently broken --
+    #       Get an OAuth access token and use as a bearer token in the authorization header
+    #       See https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/recordingsList
+    payload = {'access_token': '', 'from': last_month, 'to': today}
     response = requests.get(list_recordings_url, params=payload)
     meetings_list = []
     try:

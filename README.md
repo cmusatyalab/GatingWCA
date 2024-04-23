@@ -39,16 +39,14 @@ Fine-grained image classification is performed using
 
 Create a file called `credentials.py` in the `server` directory of this
 repository. Format it as follows, with the proper values. For example,
-replace "SDK key" with your actual SDK key:
+replace "Client ID" with your actual Client ID:
 ```
-WEB_KEY = 'JWT API Key'
-WEB_SECRET = 'JWT API Secret'
-
-ANDROID_KEY = 'SDK Key'
-ANDROID_SECRET = 'SDK Secret'
+CLIENT_ID = 'Client ID'
+CLIENT_SECRET = 'Client Secret'
 
 MEETING_NUMBER = 'MEETING_ID'
 MEETING_PASSWORD = 'MEETING_PASSWORD'
+USER_EMAIL = 'youremail@hostname'
 ```
 
 ## Installation
@@ -89,6 +87,6 @@ sudo chown $USER /path/to/this/repository/server/keys/fullchain.pem
 ## Protobuf
 
 `server/wca_state_machine_pb2.py` was copied from
- https://github.com/cmusatyalab/OpenWorkflow/blob/master/gabrieltool/statemachine/wca\_state\_machine\_pb2.py
+<https://github.com/cmusatyalab/OpenWorkflow/blob/master/gabrieltool/statemachine/wca_state_machine_pb2.py>
 
  `server/wca_pb2.py` gets generated when the Android client is run.
