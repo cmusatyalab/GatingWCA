@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="edu.cmu.cs.wca">
 
     <uses-feature android:name="android.hardware.camera" />
@@ -21,6 +22,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="com.google.android.glass.category.DIRECTORY"/>
             </intent-filter>
+        </activity>
+        <activity android:name="edu.cmu.cs.wca.ZoomActivity"
+            android:screenOrientation="fullSensor">
         </activity>
     </application>
 

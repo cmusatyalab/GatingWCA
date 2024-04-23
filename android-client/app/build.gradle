@@ -12,11 +12,11 @@ properties.load(project.rootProject.file('local.properties').newDataInputStream(
 
 android {
     compileSdkVersion 33
-    buildToolsVersion "29.0.3"
+    buildToolsVersion "30.0.2"
 
     defaultConfig {
         applicationId 'edu.cmu.cs.wca_glass_thumbsup'
-        minSdkVersion 24
+        minSdkVersion 27
         targetSdkVersion 33
         versionCode 1
         versionName "1.0"
@@ -60,7 +60,7 @@ android {
 
 dependencies {
     implementation 'androidx.core:core:1.9.0'
-    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.google.android.material:material:1.6.0'
 
     implementation 'edu.cmu.cs.gabriel:client:2.4.1'
     implementation 'edu.cmu.cs.gabriel:protocol:2.0.1'
@@ -74,6 +74,8 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:$camerax_version"
     // CameraX View class
     implementation "androidx.camera:camera-view:1.0.0-alpha22"
+    // Zoom Meeting SDK
+    implementation project(':mobilertc')
 
     // MediaPipe Hands Solution
     implementation 'com.google.mediapipe:solution-core:latest.release'
