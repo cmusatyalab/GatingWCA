@@ -8,6 +8,4 @@ gabriel-server==2.1.1
 aiohttp==3.8.3
 aiohttp_jinja2==1.5
 PyJWT==2.4.0
-opencv-contrib-python==4.6.0
-mediapipe==0.8.3
-av --no-binary av==9.2.0
+opencv-contrib-python==4.6.0.66

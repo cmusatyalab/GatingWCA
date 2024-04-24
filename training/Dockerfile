@@ -62,4 +62,3 @@ RUN pip install -U tensorflow==2.3.0
 RUN pip install -r requirements.txt
 
 ENV TF_CPP_MIN_LOG_LEVEL 3
-ENV R50=/home/tensorflow/wca-dev/fast-MPN-COV/models/pre-trained/mpncovresnet50-15991845.pth
