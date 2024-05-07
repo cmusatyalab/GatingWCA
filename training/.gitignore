@@ -1,6 +1,0 @@
-input/
-combined/
-cropped_images/
-*.tfrecord
-*.pbtxt
-.idea/

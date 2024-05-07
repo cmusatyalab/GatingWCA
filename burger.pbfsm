@@ -1,0 +1,19 @@
+?
+Start6
+start-to-step1
+pred1Always"{}Bread!"step1È
+step1Ï
+proc1TwoStageProcessor"²{"classifier_path":"/home/ubuntu/wca/models/cl_burger/","detector_path":"/home/ubuntu/wca/models/od_burger/best.pt","detector_class_name":"bread (step 1)","conf_threshold":"0.4"}m
+step1-to-step28
+pred2HasObjectClass"{"class_name":"bread (step 1)"}Put cheese on the bread!"step2Ë
+step2Ð
+proc2TwoStageProcessor"³{"classifier_path":"/home/ubuntu/wca/models/cl_burger/","detector_path":"/home/ubuntu/wca/models/od_burger/best.pt","detector_class_name":"cheese (step 2)","conf_threshold":"0.4"}o
+step2-to-step39
+pred3HasObjectClass" {"class_name":"cheese (step 2)"}Put tomato on the cheese!"step3Â
+step3Ð
+proc3TwoStageProcessor"³{"classifier_path":"/home/ubuntu/wca/models/cl_burger/","detector_path":"/home/ubuntu/wca/models/od_burger/best.pt","detector_class_name":"tomato (step 3)","conf_threshold":"0.4"}f
+step3-to-complete9
+pred4HasObjectClass" {"class_name":"tomato (step 3)"}
+Well done!"Complete
+
+Complete"Start
