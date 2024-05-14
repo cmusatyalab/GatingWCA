@@ -1,4 +1,3 @@
-import ast
 import argparse
 import json
 import logging
@@ -9,25 +8,14 @@ from datetime import datetime
 from collections import namedtuple
 from multiprocessing import Process, Pipe
 
-# import cv2
-# import numpy as np
 from PIL import Image
-
-# import tensorflow as tf
-# from object_detection.utils import label_map_util
-
-# import torch
-# from torchvision import transforms
-
 from ultralytics import YOLO
-
 from gabriel_server import cognitive_engine
 from gabriel_server import local_engine
 from gabriel_protocol import gabriel_pb2
 
 import credentials
 import http_server
-import mpncov
 import wca_pb2
 import wca_state_machine_pb2
 
@@ -35,8 +23,6 @@ SOURCE = 'wca_client'
 INPUT_QUEUE_MAXSIZE = 60
 PORT = 9099
 NUM_TOKENS = 1
-DETECTOR_ONES_SIZE = (1, 480, 640, 3)
-CLASSIFIER_THRESHOLD = 0.5
 
 MAX_FRAMES_CACHED = 1000
 CACHE_BASEDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache')
@@ -45,46 +31,21 @@ DEFAULT_CACHE_DIR = os.path.join(CACHE_BASEDIR, 'last_run')
 ALWAYS = 'Always'
 HAS_OBJECT_CLASS = 'HasObjectClass'
 CLASS_NAME = 'class_name'
-TWO_STAGE_PROCESSOR = 'TwoStageProcessor'
-GATED_TWO_STAGE_PROCESSOR = 'GatedTwoStageProcessor'
-CLASSIFIER_PATH = 'classifier_path'
-DETECTOR_PATH = 'detector_path'
-DETECTOR_CLASS_NAME = 'detector_class_name'
-CONF_THRESHOLD = 'conf_threshold'
-THUMBS_UP_REQUIRED = 'thumbs_up_required'
-TRANSITION_WORD = 'transition_word'  # Not implemented
 
-LABELS_FILENAME = 'classes.txt'
-CLASSIFIER_FILENAME = 'model_best.pth.tar'
-LABEL_MAP_FILENAME = 'label_map.pbtxt'
+YOLO_PROCESSOR = 'YoloProcessor'
+MODEL_PATH = 'model_path'
+CONF_THRESHOLD = 'conf_threshold'
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 _State = namedtuple('_State', ['always_transition', 'has_class_transitions', 'processors'])
-# _Classifier = namedtuple('_Classifier', ['model', 'labels'])
-# _Detector = namedtuple('_Detector', ['detector', 'category_index'])
-
-aruco_error_audio = 'Please place the bolt near the aruco marker, and make sure ' \
-                    'the marker is fully shown.'
-length_error_audio = 'This seems to be a bolt with the incorrect length. ' \
-                     'Please put it away and find a 12 millimeter bolt again.'
 
 
 class _StatesModels:
     def __init__(self, fsm_file_path):
         self._states = {}
-        # self._classifiers = {}
         self._object_detectors = {}
-
-        self._classifier_representation = {
-            'function': mpncov.MPNCOV,
-            'iterNum': 5,
-            'is_sqrt': True,
-            'is_vec': True,
-            'input_dim': 2048,
-            'dimension_reduction': None,
-        }
 
         pb_fsm = wca_state_machine_pb2.StateMachine()
         with open(fsm_file_path, 'rb') as f:
@@ -120,53 +81,17 @@ class _StatesModels:
         self._start_state = self._states[pb_fsm.start_state]
 
     def _load_models(self, processor):
-        # TODO: Support YOLO_OD_PROCESSOR
-        assert processor.callable_name in [TWO_STAGE_PROCESSOR, GATED_TWO_STAGE_PROCESSOR], \
-            'bad processor'
+        assert processor.callable_name in [YOLO_PROCESSOR], 'bad processor'
         callable_args = json.loads(processor.callable_args)
 
-        # classifier_dir = callable_args[CLASSIFIER_PATH]
-        # if classifier_dir not in self._classifiers:
-        #     labels_file = open(os.path.join(classifier_dir, LABELS_FILENAME))
-        #     labels = ast.literal_eval(labels_file.read())
-        #
-        #     freezed_layer = 0
-        #     model = mpncov.Newmodel(self._classifier_representation.copy(),
-        #                             len(labels), freezed_layer)
-        #     model.features = torch.nn.DataParallel(model.features)
-        #     model.cuda()
-        #     trained_model = torch.load(os.path.join(classifier_dir,
-        #                                             CLASSIFIER_FILENAME))
-        #     model.load_state_dict(trained_model['state_dict'])
-        #     model.eval()
-        #
-        #     self._classifiers[classifier_dir] = _Classifier(
-        #         model=model, labels=labels)
+        detector_path = callable_args[MODEL_PATH]
 
-        detector_dir = callable_args[DETECTOR_PATH]
-
-        if detector_dir not in self._object_detectors:
-            # detector = tf.saved_model.load(detector_dir)
-            # ones = tf.ones(DETECTOR_ONES_SIZE, dtype=tf.uint8)
-            # detector(ones)
-            #
-            # label_map_path = os.path.join(detector_dir, LABEL_MAP_FILENAME)
-            # label_map = label_map_util.load_labelmap(label_map_path)
-            # categories = label_map_util.convert_label_map_to_categories(
-            #     label_map,
-            #     max_num_classes=label_map_util.get_max_label_map_index(
-            #         label_map),
-            #     use_display_name=True)
-            # category_index = label_map_util.create_category_index(categories)
-
-            detector = YOLO(detector_dir)
+        if detector_path not in self._object_detectors:
+            detector = YOLO(detector_path)
             print(detector.names)
             detector.to('cuda')
 
-            self._object_detectors[detector_dir] = detector
-
-    # def get_classifier(self, path):
-    #     return self._classifiers[path]
+            self._object_detectors[detector_path] = detector
 
     def get_object_detector(self, path):
         return self._object_detectors[path]
@@ -222,20 +147,7 @@ class _StatesForExpertCall:
 class InferenceEngine(cognitive_engine.Engine):
 
     def __init__(self, fsm_file_path):
-        # ############################################
-        # TODO: Add to the protobuf message to make the server stateless
-        self._frame_tx_count = 0
-        # ############################################
-        # physical_devices = tf.config.list_physical_devices('GPU')
-        # tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
-        # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-        #                                  std=[0.229, 0.224, 0.225])
-        # self._transform = transforms.Compose([
-        #     transforms.Resize((448, 448)),
-        #     transforms.ToTensor(),
-        #     normalize,
-        # ])
+        # self._frame_tx_count = 0
         self._fsm_file_name = os.path.basename(fsm_file_path)
         self._states_models = _StatesModels(fsm_file_path)
 
@@ -294,7 +206,7 @@ class InferenceEngine(cognitive_engine.Engine):
         next_processors = self._states_models.get_state(transition.next_state).processors
         if len(next_processors) == 0:
             # End state reached
-            logger.info("Client done. # Frame transmitted = %s", self._frame_tx_count)
+            # logger.info("Client done. # Frame transmitted = %s", self._frame_tx_count)
             to_client_extras.step = "WCA_FSM_END"
 
         result_wrapper.extras.Pack(to_client_extras)
@@ -361,8 +273,6 @@ class InferenceEngine(cognitive_engine.Engine):
             msg = {
                 'zoom_action': 'stop'
             }
-            # TODO: Fix bug: When a client join the Zoom multiple times, it only sees the web-user-set steps
-            #       returned from the expert at the first time
             self._engine_conn.send(msg)
             pipe_output = self._engine_conn.recv()
             new_step = pipe_output.get('step')
@@ -373,7 +283,7 @@ class InferenceEngine(cognitive_engine.Engine):
         step = to_server_extras.step
         if step == "WCA_FSM_START" or not step:
             state = self._states_models.get_start_state()
-            self._frame_tx_count = 0
+            # self._frame_tx_count = 0
         elif step == "WCA_FSM_END":
             return self._result_wrapper_for(step,
                                             user_ready=wca_pb2.ToClientExtras.UserReady.DISABLE)
@@ -382,8 +292,7 @@ class InferenceEngine(cognitive_engine.Engine):
             return self._try_start_zoom(step)
         else:
             state = self._states_models.get_state(step)
-
-        self._frame_tx_count += 1
+        # self._frame_tx_count += 1
 
         # Save current cache folder and create a new cache folder
         if (to_server_extras.client_cmd ==
@@ -400,51 +309,28 @@ class InferenceEngine(cognitive_engine.Engine):
         processor = state.processors[0]
 
         callable_args = json.loads(processor.callable_args)
-        detector_dir = callable_args[DETECTOR_PATH]
-        detector = self._states_models.get_object_detector(detector_dir)
+        detector_path = callable_args[MODEL_PATH]
+        detector = self._states_models.get_object_detector(detector_path)
 
         if not input_frame.payloads:
             return self._result_wrapper_for(step)
-        # np_data = np.frombuffer(input_frame.payloads[0], dtype=np.uint8)
-        # img_bgr = cv2.imdecode(np_data, cv2.IMREAD_COLOR)
-        # img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        #
-        # # Insert a new axis to make an input tensor of shape (1, h, w, channel)
-        # # For Google Glass, the input shape is (1, 1080, 1920, 3)
-        # detections = detector.detector(np.expand_dims(img, 0))
-        # scores = detections['detection_scores'][0].numpy()
-        # boxes = detections['detection_boxes'][0].numpy()
-        # classes = detections['detection_classes'][0].numpy().astype(int)
-        #
-        # im_height, im_width = img.shape[:2]
-        #
-        # classifier_dir = callable_args[CLASSIFIER_PATH]
-        # classifier = self._states_models.get_classifier(classifier_dir)
 
         pil_img = Image.open(io.BytesIO(input_frame.payloads[0]))
 
         conf_threshold = float(callable_args[CONF_THRESHOLD])
-        detector_class_name = callable_args[DETECTOR_CLASS_NAME]
 
         detection_result = detector(pil_img, conf=conf_threshold, verbose=False)[0]
         good_boxes = []
-        box_scores = []
-        # for score, box, class_id in zip(scores, boxes, classes):
-        #     class_name = detector.category_index[class_id]['name']
-        #     if score > conf_threshold and class_name == detector_class_name:
 
         for box in detection_result.boxes:
             class_id = int(box.cls)
             class_name = detection_result.names[class_id]
-            # Make sure the classnames in YOLO matches with those in FSM
-            if detector_class_name in class_name:
-                bi = 0
-                while bi < len(box_scores):
-                    if box.conf > box_scores[bi]:
-                        break
-                    bi += 1
-                good_boxes.insert(bi, box)
-                box_scores.insert(bi, box.conf)
+            bi = 0
+            while bi < len(good_boxes):
+                if box.conf > good_boxes[bi][1]:
+                    break
+                bi += 1
+            good_boxes.insert(bi, (box, box.conf, class_name))
 
         # Cache the current frame
         if len(self._frames_cached) >= MAX_FRAMES_CACHED:
@@ -454,9 +340,9 @@ class InferenceEngine(cognitive_engine.Engine):
             except OSError as oe:
                 logger.warning(oe)
         cur_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f-')
-        detected_class = detector_class_name if good_boxes else 'none'
+        detected_class = good_boxes[0][2] if good_boxes else 'none'
         cached_filename = os.path.join(DEFAULT_CACHE_DIR,
-                                       cur_time + detected_class + '(' + detector_class_name + ').jpg')
+                                       cur_time + detected_class + '.jpg')
         self._frames_cached.append(cached_filename)
         pil_img.save(cached_filename)
 
@@ -464,51 +350,13 @@ class InferenceEngine(cognitive_engine.Engine):
             return self._result_wrapper_for(step)
 
         print()
-        print('Detector boxes:', box_scores)
-        for best_box in good_boxes:
-            # ymin, xmin, ymax, xmax = best_box
-            # (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
-            #                               ymin * im_height, ymax * im_height)
-            #
-            # cropped_pil = pil_img.crop((left, top, right, bottom))
-            # transformed = self._transform(cropped_pil).cuda()
-            # output = classifier.model(transformed[None, ...])
-            # prob = torch.nn.functional.softmax(output, dim=1)
-            # # print('Classifier probability:', prob.data.cpu().numpy())
-            #
-            # value, pred = prob.topk(1, 1, True, True)
-            # if value.item() < CLASSIFIER_THRESHOLD:
-            #     continue
-            # class_ind = pred.item()
-            # label_name = classifier.labels[class_ind]
-            #
-            # # Cache the cropped frame
-            # if len(self._frames_cached) >= MAX_FRAMES_CACHED:
-            #     frame_to_evict = self._frames_cached.pop(0)
-            #     try:
-            #         os.remove(frame_to_evict)
-            #     except OSError as oe:
-            #         logger.warning(oe)
-            # classified_class = label_name
-            # cached_filename = os.path.join(DEFAULT_CACHE_DIR,
-            #                                cur_time + "cropped-" + classified_class + '.jpg')
-            # self._frames_cached.append(cached_filename)
-            # cropped_pil.save(cached_filename)
-            #
-            # logger.info('Found label: %s', label_name)
-            # print('Classifier probability:', value.item())
-            # # logger.info('return transition: %s', str(state.has_class_transitions.keys()))
-            # # logger.info('current state name on server is: %s', step)
+        print('Detector boxes:', [(good_box[1], good_box[2]) for good_box in good_boxes])
 
-            label_name = detected_class
-
-            if label_name is not None:
-                transition = state.has_class_transitions.get(label_name)
-                if transition is not None:
-                    return self._result_wrapper_for_transition(transition)
-            return self._result_wrapper_for(step)
-
-        # Good boxes found but not classified as any valid steps
+        label_name = good_boxes[0][2] if good_boxes else None
+        if label_name is not None:
+            transition = state.has_class_transitions.get(label_name)
+            if transition is not None:
+                return self._result_wrapper_for_transition(transition)
         return self._result_wrapper_for(step)
 
 
