@@ -23,7 +23,7 @@ Object detection is performed using Ultralytics YOLOv8.
    URL, e.g. `https://us06web.zoom.us/j/<MEETING_ID>?pwd=<MEETING_PASSWORD>`.
 2. Build an app on https://marketplace.zoom.us/. You can find your Client ID and
    Client Secret on the "Basic Information" page.
-3. Continue from above, navigate to "Features" > "Embed", select "Embed Meeting SDK
+3. Continue from above, navigate to "Features" > "Embed", turn on "Embed Meeting SDK
    and bring Zoom features to your app." Then download the zip file of the Zoom SDK
    for Android. Unzip the file, find and copy `mobilertc.aar` to the `android-client/mobilertc/`
    directory of this repository.
@@ -38,6 +38,11 @@ MEETING_NUMBER = 'MEETING_ID'
 MEETING_PASSWORD = 'MEETING_PASSWORD'
 USER_EMAIL = 'youremail@hostname'
 ```
+5. Go to https://zoom.us/profile/setting. Under "Meeting" > "Schedule Meeting", turn
+   on the Participants Video option.
+6. Go to https://zoom.us/meeting/schedule. On the "Meeting ID" line, select the radio
+   button that starts with "Personal Meeting ID," uncheck "Waiting Room," and set the
+   Participant Video option to "on." Then click "Save."
 
 ## Installation
 
@@ -49,9 +54,9 @@ sudo cp /etc/letsencrypt/live/YOUR_HOSTNAME/fullchain.pem /path/to/this/reposito
 sudo chown $USER /path/to/this/repository/server/keys/privkey.pem
 sudo chown $USER /path/to/this/repository/server/keys/fullchain.pem
 ```
-3. Create a Python (^3.8) virtual environment and install poetry if you have not done so.
+3. Create a Python3.8 virtual environment and install poetry if you have not done so.
 ```
-python3 -m venv venv
+python3.8 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install poetry
