@@ -284,12 +284,12 @@ class InferenceEngine(cognitive_engine.Engine):
         if step == "WCA_FSM_START" or not step:
             state = self._states_models.get_start_state()
             # self._frame_tx_count = 0
-        elif step == "WCA_FSM_END":
-            return self._result_wrapper_for(step,
-                                            user_ready=wca_pb2.ToClientExtras.UserReady.DISABLE)
         elif (to_server_extras.client_cmd ==
               wca_pb2.ToServerExtras.ClientCmd.ZOOM_START):
             return self._try_start_zoom(step)
+        elif step == "WCA_FSM_END":
+            return self._result_wrapper_for(step,
+                                            user_ready=wca_pb2.ToClientExtras.UserReady.DISABLE)
         else:
             state = self._states_models.get_state(step)
         # self._frame_tx_count += 1

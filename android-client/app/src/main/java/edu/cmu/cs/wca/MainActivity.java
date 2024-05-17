@@ -38,15 +38,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import edu.cmu.cs.gabriel.camera.CameraCapture;
@@ -92,12 +86,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView readyTextView;
     private VideoView instructionVideo;
     private File videoFile;
-    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-z", Locale.US);
-    private final String LOGFILE = "THUMBSUP-" + sdf.format(new Date()) + ".txt";
-    final ConcurrentLinkedDeque<String> logList = new ConcurrentLinkedDeque<>();
-    private AtomicBoolean logProfiling = new AtomicBoolean(true);
-    private FileWriter logFileWriter;
-    private int inputFrameCount = 0;
     private ThumbsUpDetection thumbsUpDetector;
     private boolean readyForServer = false;
     private long currentStepStartTime = 0;
@@ -143,22 +131,17 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (step.equals(WCA_FSM_START)) {
-                logList.add(TAG + ": Start: " + SystemClock.uptimeMillis() + "\n");
-                inputFrameCount = 1;
-                Log.i(TAG, "Profiling started.");
+                Log.i(TAG, "WCA started.");
             }
             step = toClientExtras.getStep();
             if (step.equals(WCA_FSM_END) && !logCompleted) {
                 logCompleted = true;
-                logList.add(TAG + ": Total Input Frames: " + inputFrameCount + "\n");
-                logList.add(TAG + ": Stop: " + SystemClock.uptimeMillis() + "\n");
-                writeLog();
                 readyForServer = false;
                 runOnUiThread(() -> {
                     readyView.setVisibility(View.INVISIBLE);
                     readyTextView.setVisibility(View.INVISIBLE);
                 });
-                Log.i(TAG, "Profiling completed.");
+                Log.i(TAG, "WCA completed.");
             }
 
         } catch (InvalidProtocolBufferException e) {
@@ -259,15 +242,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        File logFile = new File(getExternalFilesDir(null), LOGFILE);
-        logFile.delete();
-        logFile = new File(getExternalFilesDir(null), LOGFILE);
-        try {
-            logFileWriter = new FileWriter(logFile, true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         Consumer<ErrorType> onDisconnect = errorType -> {
             Log.e(TAG, "Disconnect Error: " + errorType.name());
             finish();
@@ -332,18 +306,6 @@ public class MainActivity extends AppCompatActivity {
         thumbsUpDetector.hands.setErrorListener((message, e) -> Log.e(TAG, "MediaPipe Hands error:" + message));
     }
 
-    private void writeLog() {
-        logProfiling.set(false);
-        try {
-            for (String logString: logList) {
-                logFileWriter.write(logString);
-            }
-            logFileWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     // Based on
     // https://github.com/protocolbuffers/protobuf/blob/master/src/google/protobuf/compiler/java/java_message.cc#L1387
     public static Any pack(ToServerExtras toServerExtras) {
@@ -362,7 +324,6 @@ public class MainActivity extends AppCompatActivity {
                 image.close();
                 return;
             }
-            inputFrameCount++;
 
             if (readyForServer || toWait) {
                 ToServerExtras.ClientCmd clientCmd = reqCommand;
