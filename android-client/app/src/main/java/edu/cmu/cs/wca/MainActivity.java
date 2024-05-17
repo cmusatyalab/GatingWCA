@@ -10,9 +10,12 @@ import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -25,6 +28,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import com.google.protobuf.Any;
@@ -40,6 +44,7 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -100,8 +105,6 @@ public class MainActivity extends AppCompatActivity {
     private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             new ActivityResultCallback<ActivityResult>() {
-                // TODO: Fix bug: When a client join the Zoom multiple times, it only sees the web-user-set steps
-                //       returned from the expert at the first time
                 @Override
                 public void onActivityResult(ActivityResult result) {
                     ToServerExtras toServerExtras = ToServerExtras.newBuilder()
@@ -286,10 +289,31 @@ public class MainActivity extends AppCompatActivity {
             serverComm.send(inputFrame, SOURCE, /* wait */ true);
         };
         this.textToSpeech = new TextToSpeech(getApplicationContext(), onInitListener);
-
-        // TODO: Ask for microphone permission inside the app (before asking camera permission)
         yuvToJPEGConverter = new YuvToJPEGConverter(this, 100);
-        cameraCapture = new CameraCapture(this, analyzer, WIDTH, HEIGHT, viewFinder, CameraSelector.DEFAULT_BACK_CAMERA, false);
+
+        // Ask for runtime permission to record audio
+        String[] extraPermissions = new String[]{
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+        };
+        int recordAudioPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO);
+        int cameraPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
+        if (recordAudioPermission != PackageManager.PERMISSION_GRANTED || cameraPermission != PackageManager.PERMISSION_GRANTED) {
+            ActivityResultCallback<Map<String, Boolean>> activityResultCallback = resultMap -> {
+                if (resultMap.values().stream().allMatch(Boolean.TRUE::equals)) {
+                    cameraCapture = new CameraCapture(this, analyzer, WIDTH, HEIGHT, viewFinder, CameraSelector.DEFAULT_BACK_CAMERA, false);
+                } else {
+                    Toast.makeText(this, "The user denied the required permissions.", Toast.LENGTH_LONG).show();
+                }
+            };
+
+            ActivityResultLauncher<String[]> requestPermissionLauncher =
+                    this.registerForActivityResult(
+                            new ActivityResultContracts.RequestMultiplePermissions(), activityResultCallback);
+            requestPermissionLauncher.launch(extraPermissions);
+        } else {
+            cameraCapture = new CameraCapture(this, analyzer, WIDTH, HEIGHT, viewFinder, CameraSelector.DEFAULT_BACK_CAMERA, false);
+        }
 
         thumbsUpDetector = new ThumbsUpDetection(this);
         thumbsUpDetector.hands.setResultListener(
@@ -372,8 +396,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         cameraCapture.shutdown();
-        // TODO: Disconnect from the server elegantly?
-        // TODO: Clean up the Zoom session?
     }
 
     public void startZoom(View view) {

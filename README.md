@@ -10,8 +10,8 @@ Object detection is performed using Ultralytics YOLOv8.
 1. Create an application using the web tool at
    https://cmusatyalab.github.io/OpenWorkflow/
 2. Every processor that you add must be of type "YoloProcessor". You can
-   import the file `burger.pbfsm`, from this repository, into the web tool to
-   see an example.
+   import the file `server/sandwich.pbfsm`, from this repository, into the web
+   tool to see an example.
 3. The `model_path` must be a valid path to a trained YOLO model `xxx.pt`.
 4. `conf_threshold` is the minimum confidence score we require from the object
    detector. Any bounding boxes with a lower confidence score will be ignored.
