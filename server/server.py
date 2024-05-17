@@ -141,7 +141,7 @@ class _StatesForExpertCall:
         return self._state_names
 
     def get_transition(self, name):
-        return self._transition_to_state[name]
+        return self._transition_to_state.get(name, None)
 
 
 class InferenceEngine(cognitive_engine.Engine):
@@ -278,6 +278,8 @@ class InferenceEngine(cognitive_engine.Engine):
             new_step = pipe_output.get('step')
             logger.info('Zoom Stopped. New step: %s', new_step)
             transition = self._states_for_expert_call.get_transition(new_step)
+            if transition is None:
+                return self._result_wrapper_for(new_step)
             return self._result_wrapper_for_transition(transition)
 
         step = to_server_extras.step
