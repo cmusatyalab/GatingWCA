@@ -33,6 +33,7 @@ HAS_OBJECT_CLASS = 'HasObjectClass'
 CLASS_NAME = 'class_name'
 
 YOLO_PROCESSOR = 'YoloProcessor'
+GATING_YOLO_PROCESSOR = 'GatingYoloProcessor'
 MODEL_PATH = 'model_path'
 CONF_THRESHOLD = 'conf_threshold'
 
@@ -81,7 +82,7 @@ class _StatesModels:
         self._start_state = self._states[pb_fsm.start_state]
 
     def _load_models(self, processor):
-        assert processor.callable_name in [YOLO_PROCESSOR], 'bad processor'
+        assert processor.callable_name in [YOLO_PROCESSOR, GATING_YOLO_PROCESSOR], 'bad processor'
         callable_args = json.loads(processor.callable_args)
 
         detector_path = callable_args[MODEL_PATH]
@@ -144,6 +145,10 @@ class _StatesForExpertCall:
         return self._transition_to_state.get(name, None)
 
 
+def _thumbs_up_required(processor):
+    return processor.callable_name == GATING_YOLO_PROCESSOR
+
+
 class InferenceEngine(cognitive_engine.Engine):
 
     def __init__(self, fsm_file_path):
@@ -201,13 +206,20 @@ class InferenceEngine(cognitive_engine.Engine):
         to_client_extras.step = transition.next_state
         to_client_extras.zoom_result = wca_pb2.ToClientExtras.ZoomResult.NO_CALL
 
+        # Whether to clear the 'thumbs-up' icon or not depends on whether the next
+        # state requires thumbs-up gating or not
         assert transition.next_state != '', "invalid transition end state"
-        to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.DISABLE
         next_processors = self._states_models.get_state(transition.next_state).processors
-        if len(next_processors) == 0:
+        if len(next_processors) == 1:
+            if _thumbs_up_required(next_processors[0]):
+                to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.CLEAR
+            else:
+                to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.SET
+        elif len(next_processors) == 0:
             # End state reached
             # logger.info("Client done. # Frame transmitted = %s", self._frame_tx_count)
             to_client_extras.step = "WCA_FSM_END"
+            to_client_extras.user_ready = wca_pb2.ToClientExtras.UserReady.DISABLE
 
         result_wrapper.extras.Pack(to_client_extras)
         return result_wrapper

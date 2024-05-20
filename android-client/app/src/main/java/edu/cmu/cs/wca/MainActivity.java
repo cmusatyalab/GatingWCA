@@ -144,66 +144,79 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "WCA completed.");
             }
 
+            if (resultWrapper.getResultsCount() == 0) {
+                return;
+            }
+
+            boolean hasVideo = false;
+            for (ResultWrapper.Result result : resultWrapper.getResultsList()) {
+                if (result.getPayloadType() == PayloadType.VIDEO) {
+                    hasVideo = true;
+                    break;
+                }
+            }
+
+            // Load the user guidance (audio, image/video) from the result wrapper
+            for (ResultWrapper.Result result : resultWrapper.getResultsList()) {
+                if (result.getPayloadType() == PayloadType.TEXT) {
+                    if (!step.equals(WCA_FSM_END)) {
+                        currentStepStartTime = SystemClock.uptimeMillis();
+                        if (toClientExtras.getUserReady() == ToClientExtras.UserReady.CLEAR) {
+                            readyForServer = false;
+                            runOnUiThread(() -> {
+                                readyView.setVisibility(View.INVISIBLE);
+                                readyTextView.setVisibility(View.VISIBLE);
+                            });
+                        } else if (toClientExtras.getUserReady() == ToClientExtras.UserReady.SET) {
+                            readyForServer = true;
+                            runOnUiThread(() -> {
+                                readyView.setVisibility(View.VISIBLE);
+                                readyTextView.setVisibility(View.VISIBLE);
+                            });
+                        } else if (toClientExtras.getUserReady() == ToClientExtras.UserReady.DISABLE) {
+                            readyForServer = false;
+                            runOnUiThread(() -> {
+                                readyView.setVisibility(View.INVISIBLE);
+                                readyTextView.setVisibility(View.INVISIBLE);
+                            });
+                        }
+                    }
+
+                    ByteString dataString = result.getPayload();
+                    String speech = dataString.toStringUtf8();
+                    this.textToSpeech.speak(speech, TextToSpeech.QUEUE_FLUSH, null, null);
+                    Log.i(TAG, "Saying: " + speech);
+                } else if ((result.getPayloadType() == PayloadType.IMAGE) && !hasVideo) {
+                    ByteString image = result.getPayload();
+                    instructionViewUpdater.accept(image);
+
+                    runOnUiThread(() -> {
+                        instructionImage.setVisibility(View.VISIBLE);
+                        instructionVideo.setVisibility(View.INVISIBLE);
+                        instructionVideo.stopPlayback();
+                    });
+                } else if (result.getPayloadType() == PayloadType.VIDEO) {
+                    try {
+                        videoFile.delete();
+                        videoFile.createNewFile();
+                        FileOutputStream fos = new FileOutputStream(videoFile);
+                        result.getPayload().writeTo(fos);
+                        fos.close();
+
+                        runOnUiThread(() -> {
+                            instructionVideo.setVideoPath(videoFile.getPath());
+                            instructionVideo.start();
+
+                            instructionImage.setVisibility(View.INVISIBLE);
+                            instructionVideo.setVisibility(View.VISIBLE);
+                        });
+                    } catch (IOException e) {
+                        Log.e(TAG, "video file failed", e);
+                    }
+                }
+            }
         } catch (InvalidProtocolBufferException e) {
             Log.e(TAG, "Protobuf parse error", e);
-        }
-
-        if (resultWrapper.getResultsCount() == 0) {
-            return;
-        }
-
-        boolean hasVideo = false;
-        for (ResultWrapper.Result result : resultWrapper.getResultsList()) {
-            if (result.getPayloadType() == PayloadType.VIDEO) {
-                hasVideo = true;
-                break;
-            }
-        }
-
-        // Load the user guidance (audio, image/video) from the result wrapper
-        for (ResultWrapper.Result result : resultWrapper.getResultsList()) {
-            if (result.getPayloadType() == PayloadType.TEXT) {
-                if (!step.equals(WCA_FSM_END)) {
-                    readyForServer = false;
-                    currentStepStartTime = SystemClock.uptimeMillis();
-                    runOnUiThread(() -> {
-                        readyView.setVisibility(View.INVISIBLE);
-                        readyTextView.setVisibility(View.VISIBLE);
-                    });
-                }
-
-                ByteString dataString = result.getPayload();
-                String speech = dataString.toStringUtf8();
-                this.textToSpeech.speak(speech, TextToSpeech.QUEUE_FLUSH, null, null);
-                Log.i(TAG, "Saying: " + speech);
-            } else if ((result.getPayloadType() == PayloadType.IMAGE) && !hasVideo) {
-                ByteString image = result.getPayload();
-                instructionViewUpdater.accept(image);
-
-                runOnUiThread(() -> {
-                    instructionImage.setVisibility(View.VISIBLE);
-                    instructionVideo.setVisibility(View.INVISIBLE);
-                    instructionVideo.stopPlayback();
-                });
-            } else if (result.getPayloadType() == PayloadType.VIDEO) {
-                try {
-                    videoFile.delete();
-                    videoFile.createNewFile();
-                    FileOutputStream fos = new FileOutputStream(videoFile);
-                    result.getPayload().writeTo(fos);
-                    fos.close();
-
-                    runOnUiThread(() -> {
-                        instructionVideo.setVideoPath(videoFile.getPath());
-                        instructionVideo.start();
-
-                        instructionImage.setVisibility(View.INVISIBLE);
-                        instructionVideo.setVisibility(View.VISIBLE);
-                    });
-                } catch (IOException e) {
-                    Log.e(TAG, "video file failed", e);
-                }
-            }
         }
     };
 
